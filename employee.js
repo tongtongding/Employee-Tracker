@@ -96,7 +96,9 @@ const start = async (connection) => {
             await start(connection);
             break;
         case "Update Employee Manager":
-            // readAllEmplyees(connection);
+            const updateManagerAns = await updateManagerPrompt(connection);
+            await updateManager(connection,updateManagerAns);
+            await start(connection);
             break;
         default:
             process.exit();
@@ -129,7 +131,7 @@ const addDepartmentPrompt = async (connection) => {
         ])
 };
 
-//Add new department
+//Add new department to database
 const addDepartment = async (connection, addDeparmentAns) => {
     const sqlQuery = "INSERT INTO department(name) VALUES (?)";
     const params = [addDeparmentAns.departmentName];
@@ -166,14 +168,14 @@ const updateDepartment = async (connection, updateDepartmentAns) => {
     const params = [updateDepartmentAns.newDepartment,updateDepartmentAns.department.split(",")[0]]
     const [rows, fields] = await connection.query(sqlQuery,params);
     console.log(rows);
-}
+};
 
 //delete department - prompt questions
 const deleteDepartmentPrompt = async (connection) => {
     let allDepartments = await readAllFromDepartment(connection);
     console.log(allDepartments);
     allDepartments = allDepartments.map((department) => {
-        return `${department.id}, ${department.name}`
+        return `${department.id}, ${department.name}`;
     });
     return inquirer
         .prompt([
@@ -199,6 +201,8 @@ const deleteDepartment = async (connection, deleteDepartmentAns) => {
 
 
 
+
+
 //view roles title, salary, department name
 const readAllRole = async (connection) => {
     const [rows, fields] = await connection.query("SELECT role.id,role.title, role.salary, department.name AS department FROM role INNER JOIN department ON department.id = role.department_id ");
@@ -206,20 +210,12 @@ const readAllRole = async (connection) => {
     return rows;
 };
 
-//query with all information from role table
-// const readAllFromRole = async (connection) => {
-//     const [rows, fields] = await connection.query("SELECT * FROM role INNER JOIN department ON department.id = role.department_id ");
-//     console.table(rows);
-//     return rows;
-// };
-
-//prompt questions - new role info
+//create new role - prompt questions
 const addRolePrompt = async (connection) => {
     let allDepartments = await readAllFromDepartment(connection);
-    // console.log(allDepartments);
     allDepartments = allDepartments.map((department) => {
-        return `${department.id}, ${department.name}`
-    })
+        return `${department.id}, ${department.name}`;
+    });
     return inquirer
         .prompt([
             {
@@ -241,57 +237,19 @@ const addRolePrompt = async (connection) => {
         ])
 };
 
-//add new role
+//create new role to database
 const addRole = async (connection, addRoleAns) => {
-    const sqlQuery = ("INSERT INTO role(title,salary,department_id) VALUE(?,?,?)")
+    const sqlQuery = ("INSERT INTO role(title,salary,department_id) VALUE(?,?,?)");
     const params = [addRoleAns.title, addRoleAns.salary, addRoleAns.departmentID.split(",")[0]];
     const [rows, fields] = await connection.query(sqlQuery, params);
     console.table(rows);
 };
 
-
-//update role - prompt role
-const updateRolePrompt = async (connection) => {
-    let allEmployees = await readAllFromEmployee(connection);
-    allEmployees = allEmployees.map((employee) => {
-        return `${employee.id}, ${employee.first_name},${employee.last_name}`
-    });
-
-    const allRoles = await readAllRole(connection);
-    let viewAllRoles = allRoles.map((role) => {
-        return `${role.id}, ${role.title}`;
-    });
-
-    return inquirer
-    .prompt([
-        {
-            name: "role",
-            type: "list",
-            message: "Which employee'role would you like to update?",
-            choices: allEmployees
-        },
-        {
-            name: "newRole",
-            type: "list",
-            message: "What is the employee's new role?",
-            choices: viewAllRoles
-        }
-    ])
-};
-
-//not work
-const updateRole = async (connection,updateRoleAns) => {
-    const sqlQuery = ("UPDATE employee SET role_id = ? WHERE id = ?");
-    const params = [updateRoleAns.newRole.split(",")[0],updateRoleAns.role.split(",")[0]]
-    const [rows, fields] = await connection.query(sqlQuery,params);
-    console.log(rows);
-}
-
 //delete role - prompt question
 const deleteRolePrompt = async (connection) => {
     let allRoles = await readAllFromRole(connection);
     allRoles = allRoles.map((role) => {
-        return `${role.id}, ${role.title}`
+        return `${role.id}, ${role.title}`;
     });
     return inquirer
         .prompt([
@@ -310,7 +268,10 @@ const deleteRole = async (connection,deleteRoleAns) => {
     const params=[deleteRoleAns.role.split(",")[0]];
     const [rows, fields] = await connection.query(sqlQuery, params);
     console.log(rows);
-}
+};
+
+
+
 
 
 
@@ -322,24 +283,24 @@ const readAllEmplyees = async (connection) => {
     console.table(rows);
 };
 
-//query with manager
+//query with manager name
 const viewManager = async (connection) => {
     const [rows, fields] = await connection.query("SELECT * FROM employee WHERE manager_id IS NULL");
     return rows;
 };
 
-//prompt questions - employee info
+//add new employee - prompt questions - employee info
 const addEmployeePrompt = async (connection) => {
 
     let allManager = await viewManager(connection);
     console.log(allManager);
     allManager = allManager.map((employee) => {
-        return `${employee.id},${employee.first_name},${employee.last_name}`
+        return `${employee.id},${employee.first_name},${employee.last_name}`;
     });
 
     const allRoles = await readAllRole(connection);
     let viewAllRoles = allRoles.map((role) => {
-        return `${role.id}, ${role.title}`
+        return `${role.id}, ${role.title}`;
     });
 
     return inquirer
@@ -383,13 +344,90 @@ const readAllFromEmployee = async (connection) => {
     const [rows, fields] = await connection.query ("SELECT * FROM employee");
     console.table(rows);
     return rows;
-}
+};
+
+//update employee role - prompt role
+const updateRolePrompt = async (connection) => {
+    let allEmployees = await readAllFromEmployee(connection);
+    allEmployees = allEmployees.map((employee) => {
+        return `${employee.id}, ${employee.first_name},${employee.last_name}`;
+    });
+
+    const allRoles = await readAllRole(connection);
+    let viewAllRoles = allRoles.map((role) => {
+        return `${role.id}, ${role.title}`;
+    });
+
+    return inquirer
+    .prompt([
+        {
+            name: "role",
+            type: "list",
+            message: "Which employee'role would you like to update?",
+            choices: allEmployees
+        },
+        {
+            name: "newRole",
+            type: "list",
+            message: "What is the employee's new role?",
+            choices: viewAllRoles
+        }
+    ])
+};
+
+//update employee role
+const updateRole = async (connection,updateRoleAns) => {
+    const sqlQuery = ("UPDATE employee SET role_id = ? WHERE id = ?");
+    const params = [updateRoleAns.newRole.split(",")[0],updateRoleAns.role.split(",")[0]]
+    const [rows, fields] = await connection.query(sqlQuery,params);
+    console.log(rows);
+};
+
+
+//update employee manager - prompt questions
+const updateManagerPrompt = async (connection) => {
+    let allEmployees = await readAllFromEmployee(connection);
+    allEmployees = allEmployees.map((employee) => {
+        return `${employee.id}, ${employee.first_name},${employee.last_name}`;
+    });
+
+    let allManager = await viewManager(connection);
+    console.log(allManager);
+    allManager = allManager.map((employee) => {
+        return `${employee.id},${employee.first_name},${employee.last_name}`;
+    });
+
+    return inquirer
+    .prompt([
+        {
+            name: "employee",
+            type: "list",
+            message: "Which employee would you like to update his/her manager?",
+            choices: allEmployees
+        },
+        {
+            name: "manager",
+            type: "list",
+            message: "Who is the employee's new manager?",
+            choices: allManager
+        }
+    ])
+};
+
+//update employee manager
+const updateManager = async (connection,updateManagerAns) => {
+    const sqlQuery = ("UPDATE employee SET manager_id = ? WHERE id = ?");
+    const params = [updateManagerAns.manager.split(",")[0],updateManagerAns.employee.split(",")[0]]
+    const [rows, fields] = await connection.query(sqlQuery,params);
+    console.log(rows);
+};
+
 
 //delete employee - prompt questions
 const deleteEmployeePrompt = async (connection) => {
     let allEmployees = await readAllFromEmployee(connection);
     allEmployees = allEmployees.map((employee) => {
-        return `${employee.id}, ${employee.first_name},${employee.last_name}`
+        return `${employee.id}, ${employee.first_name},${employee.last_name}`;
     });
     return inquirer
     .prompt([
