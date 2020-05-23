@@ -290,7 +290,8 @@ const deleteRole = async (connection,deleteRoleAns) => {
 
 //view all employees
 const readAllEmplyees = async (connection) => {
-    const [rows, fields] = await connection.query("SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department, role.salary, CONCAT(manager.first_name,' ', manager.last_name) AS manager FROM employee LEFT JOIN role ON role.id = employee.role_id LEFT JOIN department ON department.id=role.department_id LEFT JOIN employee AS manager ON employee.manager_id = manager.id");
+    const sqlQuery = ("SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department, role.salary, CONCAT(manager.first_name,' ', manager.last_name) AS manager FROM employee LEFT JOIN role ON role.id = employee.role_id LEFT JOIN department ON department.id=role.department_id LEFT JOIN employee AS manager ON employee.manager_id = manager.id")
+    const [rows, fields] = await connection.query(sqlQuery);
     console.table(rows);
 };
 
@@ -460,7 +461,7 @@ const deleteEmployeePrompt = async (connection) => {
     ])
 };
 
-//delete employee
+//delete employee 
 const deleteEmployee = async (connection, deleteEmployeeAns) => {
     const sqlQuery = ("DELETE FROM employee WHERE id=?");
     const params=[deleteEmployeeAns.deleteEmployeeName.split(",")[0]];
@@ -486,7 +487,9 @@ const readEmployeesByDepPrompt = async (connection) => {
 
 // view all employees by department
 const readEmployeesByDep= async (connection,readEmployeesByDepAns) => {
-    const [rows, fields] = await connection.query("SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department FROM employee LEFT JOIN role ON employee.role_id = role.id LEFT JOIN department ON role.department_id = department.id WHERE department.id = ?", [readEmployeesByDepAns.departmentName.split(",")[0]]);
+    const sqlQuery = ("SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department FROM employee LEFT JOIN role ON employee.role_id = role.id LEFT JOIN department ON role.department_id = department.id WHERE department.id = ?");
+    const params = [readEmployeesByDepAns.departmentName.split(",")[0]]
+    const [rows, fields] = await connection.query(sqlQuery, params);
     console.table(rows);
     return rows;
 };
@@ -510,11 +513,12 @@ const readEmployeesByManagerPrompt = async (connection) => {
 };
 
 const readEmployeesByManager = async (connection,readEmployeesByManagerAns) => {
-    const [rows, fields] = await connection.query("SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department FROM employee LEFT JOIN role ON employee.role_id = role.id LEFT JOIN department ON role.department_id = department.id WHERE employee.manager_id = ?", [readEmployeesByManagerAns.managerName.split(",")[0]]);
+    const sqlQuery = ("SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department FROM employee LEFT JOIN role ON employee.role_id = role.id LEFT JOIN department ON role.department_id = department.id WHERE employee.manager_id = ?");
+    const params = [readEmployeesByManagerAns.managerName.split(",")[0]]
+    const [rows, fields] = await connection.query(sqlQuery,params);
     console.table(rows);
     return rows;
 };
-
 
 
 const readDepartmentBudget = async (connection) => {
