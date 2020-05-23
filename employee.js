@@ -29,7 +29,7 @@ const startPrompt = async () => {
             name: "toDo",
             type: "list",
             message: "What would you like to do?",
-            choices: ["View All Departments", "View All Roles", "View All Employees", "View All Employees By Department", "View All Employees By Manager", "Add Department", "Add Role", "Add Employee", "Remove Department", "Remove Role", "Remove Employee", "Update Department", "Update Employee Role", "Update Employee Manager", "Quit"]
+            choices: ["View All Departments", "View All Roles", "View All Employees", "View All Employees By Department", "View All Employees By Manager", "View Department Budget","Add Department", "Add Employee Role", "Add Employee", "Remove Department", "Remove Role", "Remove Employee", "Update Department", "Update Employee Role", "Update Employee Manager", "Quit"]
         })
 };
 
@@ -49,11 +49,18 @@ const start = async (connection) => {
             await start(connection);
             break;
         case "View All Employees By Department":
-        // await readEmployeesByDep(connection);
-        // await start(connection);
-        // break;
+            const readEmployeesByDepAns = await readEmployeesByDepPrompt(connection);
+            await readEmployeesByDep(connection,readEmployeesByDepAns);
+            await start(connection);
+            break;
         case "View All Employees By Manager":
-            // readAllEmplyees(connection);
+            const readEmployeesByManagerAns = await readEmployeesByManagerPrompt(connection);
+            await readEmployeesByManager(connection,readEmployeesByManagerAns);
+            await start(connection);
+            break;
+        case "View Department Budget":
+            await readDepartmentBudget(connection);
+            await start(connection);
             break;
         case "Add Department":
             const addDeparmentAns = await addDepartmentPrompt(connection);
@@ -100,6 +107,7 @@ const start = async (connection) => {
             await updateManager(connection,updateManagerAns);
             await start(connection);
             break;
+       
         default:
             process.exit();
     };
@@ -116,6 +124,11 @@ const readAllDepartment = async (connection) => {
 const readAllFromDepartment = async (connection) => {
     const [rows, fields] = await connection.query("SELECT * FROM department");
     console.table(rows);
+    return rows;
+};
+
+const getDepartment = async (connection) => {
+    const [rows, fields] = await connection.query("SELECT * FROM department");
     return rows;
 };
 
@@ -142,7 +155,6 @@ const addDepartment = async (connection, addDeparmentAns) => {
 //Update department - prompt questions
 const updateDepartmentPrompt = async (connection) => {
     let allDepartments = await readAllFromDepartment(connection);
-    console.log(allDepartments);
     allDepartments = allDepartments.map((department) => {
         return `${department.id}, ${department.name}`
     });
@@ -167,13 +179,12 @@ const updateDepartment = async (connection, updateDepartmentAns) => {
     const sqlQuery = ("UPDATE department SET name=? WHERE id=?");
     const params = [updateDepartmentAns.newDepartment,updateDepartmentAns.department.split(",")[0]]
     const [rows, fields] = await connection.query(sqlQuery,params);
-    console.log(rows);
+    console.table(rows);
 };
 
 //delete department - prompt questions
 const deleteDepartmentPrompt = async (connection) => {
     let allDepartments = await readAllFromDepartment(connection);
-    console.log(allDepartments);
     allDepartments = allDepartments.map((department) => {
         return `${department.id}, ${department.name}`;
     });
@@ -193,7 +204,7 @@ const deleteDepartment = async (connection, deleteDepartmentAns) => {
     const sqlQuery = "DELETE FROM department WHERE id=?";
     const params = [deleteDepartmentAns.department.split(",")[0]]
     const [rows, fields] = await connection.query(sqlQuery, params);
-    console.log(rows);
+    console.table(rows);
 };
 
 
@@ -212,7 +223,7 @@ const readAllRole = async (connection) => {
 
 //create new role - prompt questions
 const addRolePrompt = async (connection) => {
-    let allDepartments = await readAllFromDepartment(connection);
+    let allDepartments = await getDepartment(connection);
     allDepartments = allDepartments.map((department) => {
         return `${department.id}, ${department.name}`;
     });
@@ -267,7 +278,7 @@ const deleteRole = async (connection,deleteRoleAns) => {
     const sqlQuery = ("DELETE FROM department WHERE id=?");
     const params=[deleteRoleAns.role.split(",")[0]];
     const [rows, fields] = await connection.query(sqlQuery, params);
-    console.log(rows);
+    console.table(rows);
 };
 
 
@@ -279,7 +290,7 @@ const deleteRole = async (connection,deleteRoleAns) => {
 
 //view all employees
 const readAllEmplyees = async (connection) => {
-    const [rows, fields] = await connection.query("SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department, role.salary, CONCAT(manager.first_name,' ', manager.last_name) AS manager FROM employee LEFT JOIN role ON role.id = employee.role_id LEFT JOIN department ON department.id=role.department_id LEFT JOIN employee manager ON employee.manager_id = manager.id");
+    const [rows, fields] = await connection.query("SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department, role.salary, CONCAT(manager.first_name,' ', manager.last_name) AS manager FROM employee LEFT JOIN role ON role.id = employee.role_id LEFT JOIN department ON department.id=role.department_id LEFT JOIN employee AS manager ON employee.manager_id = manager.id");
     console.table(rows);
 };
 
@@ -293,10 +304,11 @@ const viewManager = async (connection) => {
 const addEmployeePrompt = async (connection) => {
 
     let allManager = await viewManager(connection);
-    console.log(allManager);
     allManager = allManager.map((employee) => {
         return `${employee.id},${employee.first_name},${employee.last_name}`;
     });
+
+    allManager.unshift("None");
 
     const allRoles = await readAllRole(connection);
     let viewAllRoles = allRoles.map((role) => {
@@ -322,7 +334,7 @@ const addEmployeePrompt = async (connection) => {
                 choices: viewAllRoles
             },
             {
-                name: "manager",
+                name: "managerId",
                 type: "list",
                 message: "Who is the employee's manager",
                 choices: allManager
@@ -333,7 +345,11 @@ const addEmployeePrompt = async (connection) => {
 //add employees to database
 const addEmployee = async (connection, addEmployeeAns) => {
     const sqlQuery = "INSERT INTO employee(first_name,last_name,role_id,manager_id) VALUES (?,?,?,?)";
-    const params = [addEmployeeAns.firstName, addEmployeeAns.lastName, addEmployeeAns.roleId.split(",")[0], addEmployeeAns.manager.split(",")[0]];
+
+    if (addEmployeeAns.manager = "None") {
+        managerId = null;
+    } else { managerId = addEmployeeAns.manager.split(",")[0]}
+    const params = [addEmployeeAns.firstName, addEmployeeAns.lastName, addEmployeeAns.roleId.split(",")[0], managerId];
     const [rows, fields] = await connection.query(sqlQuery, params);
 
     console.table(rows);
@@ -346,9 +362,14 @@ const readAllFromEmployee = async (connection) => {
     return rows;
 };
 
+const getEmployee = async (connection) => {
+    const [rows, fields] = await connection.query ("SELECT * FROM employee");
+    return rows;
+};
+
 //update employee role - prompt role
 const updateRolePrompt = async (connection) => {
-    let allEmployees = await readAllFromEmployee(connection);
+    let allEmployees = await getEmployee(connection);
     allEmployees = allEmployees.map((employee) => {
         return `${employee.id}, ${employee.first_name},${employee.last_name}`;
     });
@@ -380,7 +401,7 @@ const updateRole = async (connection,updateRoleAns) => {
     const sqlQuery = ("UPDATE employee SET role_id = ? WHERE id = ?");
     const params = [updateRoleAns.newRole.split(",")[0],updateRoleAns.role.split(",")[0]]
     const [rows, fields] = await connection.query(sqlQuery,params);
-    console.log(rows);
+    console.table(rows);
 };
 
 
@@ -392,7 +413,6 @@ const updateManagerPrompt = async (connection) => {
     });
 
     let allManager = await viewManager(connection);
-    console.log(allManager);
     allManager = allManager.map((employee) => {
         return `${employee.id},${employee.first_name},${employee.last_name}`;
     });
@@ -419,7 +439,7 @@ const updateManager = async (connection,updateManagerAns) => {
     const sqlQuery = ("UPDATE employee SET manager_id = ? WHERE id = ?");
     const params = [updateManagerAns.manager.split(",")[0],updateManagerAns.employee.split(",")[0]]
     const [rows, fields] = await connection.query(sqlQuery,params);
-    console.log(rows);
+    console.table(rows);
 };
 
 
@@ -445,15 +465,60 @@ const deleteEmployee = async (connection, deleteEmployeeAns) => {
     const sqlQuery = ("DELETE FROM employee WHERE id=?");
     const params=[deleteEmployeeAns.deleteEmployeeName.split(",")[0]];
     const [rows, fields] = await connection.query(sqlQuery, params);
-    console.log(rows);
+    console.table(rows);
+};
+
+const readEmployeesByDepPrompt = async (connection) => {
+    let allDepartment = await readAllFromDepartment(connection);
+    allDepartment = allDepartment.map((department)=>{
+        return `${department.id}, ${department.name}`
+    })
+    return inquirer
+    .prompt([
+        {
+            name: "departmentName",
+            type: "list",
+            message: "Which department would you like to view?",
+            choices: allDepartment
+        }
+    ]);
+};
+
+// view all employees by department
+const readEmployeesByDep= async (connection,readEmployeesByDepAns) => {
+    const [rows, fields] = await connection.query("SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department FROM employee LEFT JOIN role ON employee.role_id = role.id LEFT JOIN department ON role.department_id = department.id WHERE department.id = ?", [readEmployeesByDepAns.departmentName.split(",")[0]]);
+    console.table(rows);
+    return rows;
+};
+
+//view all employees by manager 
+const readEmployeesByManagerPrompt = async (connection) => {
+    let allManager = await viewManager(connection);
+    allManager = allManager.map((employee) => {
+        return `${employee.id},${employee.first_name},${employee.last_name}`;
+    });
+
+    return inquirer
+    .prompt([
+        {
+            name: "managerName",
+            type: "list",
+            message: "Which manager would you like to view?",
+            choices: allManager
+        }
+    ]);
+};
+
+const readEmployeesByManager = async (connection,readEmployeesByManagerAns) => {
+    const [rows, fields] = await connection.query("SELECT employee.id, employee.first_name, employee.last_name, role.title, department.name AS department FROM employee LEFT JOIN role ON employee.role_id = role.id LEFT JOIN department ON role.department_id = department.id WHERE employee.manager_id = ?", [readEmployeesByManagerAns.managerName.split(",")[0]]);
+    console.table(rows);
+    return rows;
 };
 
 
 
-
-//view all employees by department
-// const readEmployeesByDep= async (connection) => {
-//     const [rows, fields] = await connection.query("SELECT * FROM employee LEFT JOIN department ON ")
-//     console.table(rows);
-//     return rows;
-// }
+const readDepartmentBudget = async (connection) => {
+    const [rows, fields] = await connection.query("SELECT department.id, department.name AS department, SUM(role.salary) AS budget FROM employee LEFT JOIN role ON employee.role_id = role.id LEFT JOIN department ON role.department_id = department.id GROUP BY department.id");
+    console.table(rows);
+    return rows;
+};
