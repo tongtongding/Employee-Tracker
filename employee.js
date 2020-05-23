@@ -29,7 +29,7 @@ const startPrompt = async () => {
             name: "toDo",
             type: "list",
             message: "What would you like to do?",
-            choices: ["View All Departments", "View All Roles", "View All Employees", "View All Employees By Department", "View All Employees By Manager", "Add Department", "Add Role", "Add Employee", "Remove Department", "Remove Role", "Remove Employee", "Update Department", "Update Employee Role", "Update Employee", "Update Employee manager", "Quit"]
+            choices: ["View All Departments", "View All Roles", "View All Employees", "View All Employees By Department", "View All Employees By Manager", "Add Department", "Add Role", "Add Employee", "Remove Department", "Remove Role", "Remove Employee", "Update Department", "Update Employee Role", "Update Employee Manager", "Quit"]
         })
 };
 
@@ -95,7 +95,7 @@ const start = async (connection) => {
             await updateRole(connection,updateRoleAns);
             await start(connection);
             break;
-        case "Update Employee":
+        case "Update Employee Manager":
             // readAllEmplyees(connection);
             break;
         default:
@@ -201,17 +201,17 @@ const deleteDepartment = async (connection, deleteDepartmentAns) => {
 
 //view roles title, salary, department name
 const readAllRole = async (connection) => {
-    const [rows, fields] = await connection.query("SELECT role.title, role.salary, department.name AS department FROM role INNER JOIN department ON department.id = role.department_id ");
+    const [rows, fields] = await connection.query("SELECT role.id,role.title, role.salary, department.name AS department FROM role INNER JOIN department ON department.id = role.department_id ");
     console.table(rows);
     return rows;
 };
 
 //query with all information from role table
-const readAllFromRole = async (connection) => {
-    const [rows, fields] = await connection.query("SELECT * FROM role INNER JOIN department ON department.id = role.department_id ");
-    console.table(rows);
-    return rows;
-};
+// const readAllFromRole = async (connection) => {
+//     const [rows, fields] = await connection.query("SELECT * FROM role INNER JOIN department ON department.id = role.department_id ");
+//     console.table(rows);
+//     return rows;
+// };
 
 //prompt questions - new role info
 const addRolePrompt = async (connection) => {
@@ -257,9 +257,9 @@ const updateRolePrompt = async (connection) => {
         return `${employee.id}, ${employee.first_name},${employee.last_name}`
     });
 
-    let allRoles = await readAllFromRole(connection);
-    allRoles = allRoles.map((role) => {
-        return `${role.id}, ${role.title}`
+    const allRoles = await readAllRole(connection);
+    let viewAllRoles = allRoles.map((role) => {
+        return `${role.id}, ${role.title}`;
     });
 
     return inquirer
@@ -273,16 +273,16 @@ const updateRolePrompt = async (connection) => {
         {
             name: "newRole",
             type: "list",
-            message: "Which role would you like to update to?",
-            choices: allRoles
+            message: "What is the employee's new role?",
+            choices: viewAllRoles
         }
     ])
 };
 
 //not work
 const updateRole = async (connection,updateRoleAns) => {
-    const sqlQuery = ("UPDATE department SET name=? WHERE id=?");
-    const params = [updateRoleAns.newRole,updateRoleAns.role.split(",")[0]]
+    const sqlQuery = ("UPDATE employee SET role_id = ? WHERE id = ?");
+    const params = [updateRoleAns.newRole.split(",")[0],updateRoleAns.role.split(",")[0]]
     const [rows, fields] = await connection.query(sqlQuery,params);
     console.log(rows);
 }
@@ -337,8 +337,8 @@ const addEmployeePrompt = async (connection) => {
         return `${employee.id},${employee.first_name},${employee.last_name}`
     });
 
-    let allRoles = await readAllFromRole(connection);
-    allRoles = allRoles.map((role) => {
+    const allRoles = await readAllRole(connection);
+    let viewAllRoles = allRoles.map((role) => {
         return `${role.id}, ${role.title}`
     });
 
@@ -358,7 +358,7 @@ const addEmployeePrompt = async (connection) => {
                 name: "roleId",
                 type: "list",
                 message: "What is the employee's role?",
-                choices: allRoles
+                choices: viewAllRoles
             },
             {
                 name: "manager",
