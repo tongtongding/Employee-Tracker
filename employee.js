@@ -309,7 +309,7 @@ const addEmployeePrompt = async (connection) => {
         return `${employee.id},${employee.first_name},${employee.last_name}`;
     });
 
-    allManager.unshift("None");
+    allManager.push("None");
 
     const allRoles = await readAllRole(connection);
     let viewAllRoles = allRoles.map((role) => {
